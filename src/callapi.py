@@ -179,23 +179,43 @@ def call_openai_api(text, task):
     ans = ans_dict['choices'][0]['text'].strip()
     return ans
 
+def call_openai_api_in_batches(batches, task):
+    full_text = ''
+    for text in batches:
+        full_text = full_text + "\n\n" + call_openai_api(text, task)
+        # print(f"TEXT\n{text}\n\nAPI RESPONSE\n{full_text}\n***********\n")
+    return full_text
+
+def post_process_summary(raw_summary):
+    return raw_summary.replace("\n", "\n\n")
+
+
+def post_process_actions(raw_actions):
+    split_text = re.split(r'- |\[\s]|[0-9]*\.|\n', raw_actions)
+    return '\n\n'.join(['- ' + x for x in split_text if x.strip() != ''])
+
+
 def compare_response():
     path_config = PathConfig()
     config = GPT3Config()
     preprocessing_config = PreprocessingConfig()
-    with open(path_config.folder_path + path_config.preprocess_txt_folder + path_config.preprocess_txt) as f:
+    with open(path_config.folder_path + path_config.preprocess_file_folder + path_config.preprocess_file) as f:
         text = f.read()
-    text = truncate_text(text, num_chars=preprocessing_config.text_truncation_chars)
+    text_batches = parse_vtt(text)
+    raw_summary = call_openai_api_in_batches(text_batches, 'tl;dr:')
+    raw_actions = call_openai_api_in_batches(text_batches, 'TODO Action items:')
+    summary = post_process_summary(raw_summary)
+    actions = post_process_actions(raw_actions)
+    # print(f"{summary}/n{actions}")
     df = pd.read_csv(path_config.folder_path + path_config.api_response_csv)
-    ans = call_openai_api_parag_key(text, config.task)
-    data = pd.DataFrame({"txt_file_name": path_config.preprocess_txt,
-                            "task": config.task,
+    data = pd.DataFrame({"txt_file_name": path_config.preprocess_file,
                             "temperature": config.temperature,
                             "top_p": config.top_p,
                             "frequency_penalty": config.frequency_penalty,
                             "presence_penalty": config.frequency_penalty,
-                            "summary": ans}, index=[0])
-    df = df.append(data).reset_index(drop=True)
+                            "summary": str(summary.replace("\n\n", "\n")),
+                            "actions": str(actions.replace("\n\n", "\n"))}, index=[0])
+    df = df.append(data, ignore_index=True)
     df.to_csv(path_config.folder_path + path_config.api_response_csv, index=False)
 
 if __name__ == "__main__":

@@ -39,6 +39,6 @@ class PreprocessingConfig:
 
 class PathConfig:
     folder_path = "/Users/yiranliu/Library/CloudStorage/OneDrive-Microsoft/Hackathon/Nuen/Nuen-Bot-Test/"
-    preprocess_txt_folder = "processed_text_files/"
-    preprocess_txt = "condensed_Transcript_4.txt"
+    preprocess_file_folder = "raw_vtt_files/"
+    preprocess_file = "Transcript_7.vtt"
     api_response_csv = "api_response/api_response.csv"
